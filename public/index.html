@@ -4,410 +4,119 @@
     <meta charset="utf-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Anchor Alarm</title>
+    <title>Anchor Drag ML</title>
     <script src="js/jquery-3.5.1.min.js"></script>
     <link rel="stylesheet" href="leaflet/leaflet.css" />
     <script src="leaflet/leaflet.js"></script>
     <script src="leaflet/leaflet.rotatedMarker.js"></script>
     <style>
-      body {
-        padding: 0;
-        margin: 0;
-      }
-
-      html,
-      body,
-      #map {
-        height: 100%;
-        width: 100%;
-        z-index: 1;
-        position: relative;
-      }
-
-      #map_container {
-        height: 100%;
-        width: 100%;
-        z-index: 1;
-        position: relative;
-      }
-
+      html, body { margin: 0; width: 100%; height: 100%; font-family: Arial, sans-serif; }
+      #layout { display: grid; grid-template-rows: 1fr 240px; height: 100%; }
+      #map { width: 100%; height: 100%; }
       #controls {
-        position: absolute;
-        bottom: 50px;
-        left: 50%;
-        width: 300px;
-        margin-left: -150px;
-        z-index: 99;
-        text-align: center;
-        line-height: 40px;
-      }
-
-      #map_toggle {
-        position: absolute;
-        top: 20px;
-        left: 50%;
-        width: 300px;
-        height: 50px;
-        margin-left: -150px;
-        z-index: 99;
-        opacity: 1;
-        border-radius: 5px;
-        text-align: center;
-        line-height: 40px;
-      }
-
-      #info {
-        position: absolute;
-        z-index: 110;
-        top: 60px;
-        left: 50%;
-        padding: 5px;
-        width: 300px;
-        margin-left: -150px;
-        height: 58px;
-        overflow: none;
-        background-color: #fff;
-        border-radius: 10px;
-        border: 1px solid #888;
-        overflow-x: hidden;
-        font-family: Verdana, Tahoma, sans-serif;
-        font-size: 12pt;
-      }
-
-      #info .heading {
-        font-weight: bold;
-        text-align: center;
-        color: navy;
-        font-size: 14pt;
-      }
-
-      #info .value {
-        text-align: center;
-        font-size: 13pt;
-        margin-top: 5px;
-      }
-
-      .popupHeading {
-        font-weight: bold;
-        text-align: right;
-      }
-
-      button {
+        border-top: 1px solid #d0d0d0;
         padding: 10px;
-        border-radius: 10px;
-        border: 1px solid #888;
-        background-color: white;
+        background: #f8f9fb;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
       }
-
-      #anchorDown,
-      #anchorUp {
-        display: none;
+      .panel { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 8px; font-size: 13px; }
+      .row { display: flex; align-items: center; gap: 8px; margin: 6px 0; flex-wrap: wrap; }
+      .row label { font-weight: 600; }
+      input[type='datetime-local'], select, button, input[type='number'] { font-size: 12px; padding: 4px 6px; }
+      #timelineSlider { width: 100%; }
+      #labelsList { max-height: 88px; overflow-y: auto; border: 1px solid #e8e8e8; padding: 6px; border-radius: 6px; background: #fafafa; }
+      #statusText { color: #555; font-size: 12px; }
+      .prediction-high { color: #b42318; font-weight: 700; }
+      .small { font-size: 12px; color: #555; }
+      #modeBadge {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        z-index: 900;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.4px;
+        padding: 4px 8px;
+        border-radius: 999px;
+        border: 1px solid #c8c8c8;
+        background: rgba(255, 255, 255, 0.9);
+        color: #1f2937;
+      }
+      #modeBadge.live {
+        border-color: #2b8a3e;
+        color: #1f7a35;
+      }
+      #modeBadge.playback {
+        border-color: #0b7285;
+        color: #0b7285;
       }
     </style>
   </head>
   <body>
-    <div id="map_container">
+    <div id="layout">
       <div id="map"></div>
-      <div id="map_toggle"></div>
+      <div id="modeBadge" class="live">LIVE</div>
       <div id="controls">
-        <div id="anchorDown">
-          <button id="decreaseRadius">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="30"
-              height="30"
-              viewBox="0 0 448 512"
-            >
-              <!--!Font Awesome Free 6.6.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.-->
-              <path
-                d="M432 256c0 17.7-14.3 32-32 32L48 288c-17.7 0-32-14.3-32-32s14.3-32 32-32l352 0c17.7 0 32 14.3 32 32z"
-              />
-            </svg></button
-          >&nbsp;
-          <button id="setRadius">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="30"
-              height="30"
-              viewBox="0 0 512 512"
-            >
-              <!--!Font Awesome Free 6.6.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.-->
-              <path
-                d="M406.6 374.6l96-96c12.5-12.5 12.5-32.8 0-45.3l-96-96c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3L402.7 224l-293.5 0 41.4-41.4c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-96 96c-12.5 12.5-12.5 32.8 0 45.3l96 96c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 288l293.5 0-41.4 41.4c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0z"
-              />
-            </svg></button
-          >&nbsp;
-          <button id="raiseAnchor">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="30"
-              height="30"
-              viewBox="0 0 640 512"
-            >
-              <!--!Font Awesome Free 6.6.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.-->
-              <path
-                d="M320 96a32 32 0 1 1 -64 0 32 32 0 1 1 64 0zm21.1 80C367 158.8 384 129.4 384 96c0-53-43-96-96-96s-96 43-96 96c0 33.4 17 62.8 42.9 80L224 176c-17.7 0-32 14.3-32 32s14.3 32 32 32l32 0 0 208-48 0c-53 0-96-43-96-96l0-6.1 7 7c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9L97 263c-9.4-9.4-24.6-9.4-33.9 0L7 319c-9.4 9.4-9.4 24.6 0 33.9s24.6 9.4 33.9 0l7-7 0 6.1c0 88.4 71.6 160 160 160l80 0 80 0c8.2 0 16.3-.6 24.2-1.8c-22.2-16.2-40.4-37.5-53-62.2L320 448l0-80 0-128 32 0c17.7 0 32-14.3 32-32s-14.3-32-32-32l-10.9 0zM496 512a144 144 0 1 0 0-288 144 144 0 1 0 0 288zm59.3-180.7L518.6 368l36.7 36.7c6.2 6.2 6.2 16.4 0 22.6s-16.4 6.2-22.6 0L496 390.6l-36.7 36.7c-6.2 6.2-16.4 6.2-22.6 0s-6.2-16.4 0-22.6L473.4 368l-36.7-36.7c-6.2-6.2-6.2-16.4 0-22.6s16.4-6.2 22.6 0L496 345.4l36.7-36.7c6.2-6.2 16.4-6.2 22.6 0s6.2 16.4 0 22.6z"
-              />
-            </svg></button
-          >&nbsp;
-          <button id="increaseRadius">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="30"
-              height="30"
-              viewBox="0 0 448 512"
-            >
-              <!--!Font Awesome Free 6.6.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.-->
-              <path
-                d="M256 80c0-17.7-14.3-32-32-32s-32 14.3-32 32l0 144L48 224c-17.7 0-32 14.3-32 32s14.3 32 32 32l144 0 0 144c0 17.7 14.3 32 32 32s32-14.3 32-32l0-144 144 0c17.7 0 32-14.3 32-32s-14.3-32-32-32l-144 0 0-144z"
-              />
-            </svg>
-          </button>
+        <div class="panel">
+          <div><strong>Timeline + Labeling</strong></div>
+          <div class="row">
+            <label>Vessel</label>
+            <select id="vesselSelect"></select>
+            <span class="small">Retention: <span id="retentionText">-</span>h</span>
+          </div>
+          <div class="row">
+            <label>Start</label><input id="rangeStart" type="datetime-local" />
+            <label>End</label><input id="rangeEnd" type="datetime-local" />
+            <button id="loadRangeBtn">Load Range</button>
+          </div>
+          <div class="row">
+            <button id="playBtn">Play</button>
+            <button id="pauseBtn">Pause</button>
+            <button id="liveModeBtn">Go Live</button>
+            <span class="small">Cursor: <span id="cursorText">-</span></span>
+          </div>
+          <div class="row">
+            <input id="timelineSlider" type="range" min="0" max="1000" value="0" />
+          </div>
+          <div class="row">
+            <button id="markNormalBtn">Mark Normal Anchored</button>
+            <button id="markDraggingBtn">Mark Dragging Event</button>
+          </div>
+          <div id="statusText">Ready.</div>
         </div>
-        <div id="anchorUp">
-          <button id="dropAnchor">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="30"
-              height="30"
-              viewBox="0 0 576 512"
-            >
-              <!--!Font Awesome Free 6.6.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.-->
-              <path
-                d="M320 96a32 32 0 1 1 -64 0 32 32 0 1 1 64 0zm21.1 80C367 158.8 384 129.4 384 96c0-53-43-96-96-96s-96 43-96 96c0 33.4 17 62.8 42.9 80L224 176c-17.7 0-32 14.3-32 32s14.3 32 32 32l32 0 0 208-48 0c-53 0-96-43-96-96l0-6.1 7 7c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9L97 263c-9.4-9.4-24.6-9.4-33.9 0L7 319c-9.4 9.4-9.4 24.6 0 33.9s24.6 9.4 33.9 0l7-7 0 6.1c0 88.4 71.6 160 160 160l80 0 80 0c88.4 0 160-71.6 160-160l0-6.1 7 7c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-56-56c-9.4-9.4-24.6-9.4-33.9 0l-56 56c-9.4 9.4-9.4 24.6 0 33.9s24.6 9.4 33.9 0l7-7 0 6.1c0 53-43 96-96 96l-48 0 0-208 32 0c17.7 0 32-14.3 32-32s-14.3-32-32-32l-10.9 0z"
-              />
-            </svg>
-          </button>
+        <div class="panel">
+          <div><strong>Model Operations</strong></div>
+          <div class="row">
+            <button id="retrainBtn">Retrain Model</button>
+            <button id="refreshModelBtn">Refresh Status</button>
+          </div>
+          <div class="row small">
+            <span>Sample window (min)</span>
+            <input id="windowMinutes" type="number" min="1" value="10" />
+            <button id="predictBtn">Predict Selected Range</button>
+          </div>
+          <div id="modelStatus" class="small">Model not loaded.</div>
+          <div class="small" style="margin-top:8px"><strong>Labels</strong></div>
+          <div id="labelsList"></div>
         </div>
-      </div>
-      <div id="info">
-        <table style="width: 100%">
-          <tr>
-            <td style="width: 35%">
-              <div class="heading">Distance</div>
-              <div class="value"><span id="radiusValue">-</span> m</div>
-            </td>
-            <td style="width: 35%">
-              <div class="heading">Limit</div>
-              <div class="value"><span id="radius">-</span> m</div>
-            </td>
-            <td style="width: 30%">
-              <div class="heading">Depth</div>
-              <div class="value"><span id="depthValue">-</span> m</div>
-            </td>
-          </tr>
-        </table>
       </div>
     </div>
+
     <script>
-      var boat
-      var anchor
-      var anchorRadius
-      var mmsi
-      var maxRadius
-      var latitude
-      var longitude
-      var target = {}
-      var track
-      var trackUpdater
+      var map = L.map('map', { zoomControl: false }).setView([39.8283, -98.5795], 5)
 
-      // Check if we have an authenticated session first, if not, we will redirect
-      // getTrack will return 401 if the session is not authenticated
-      $.getJSON('/plugins/anchoralarm/getTrack', (data) => {}).fail(
-        (response) => {
-          if ((response.status = 401)) {
-            location.href = '/admin/#/login'
-          }
-        }
-      )
-
-      var map = L.map('map', {
-        zoomControl: false
-      }).setView([39.8283, -98.5795], 5)
-
-      var anchorIcon = L.icon({
-        iconUrl: 'images/anchor.png',
-        iconSize: [24, 24], // size of the icon
-        iconAnchor: [12, 12] // point of the icon which will correspond to marker's location
-      })
-
-      var targetIcon = L.icon({
-        iconUrl: 'images/ais_boat.png',
-        iconSize: [24, 24], // size of the icon
-        iconAnchor: [12, 12] // point of the icon which will correspond to marker's location
-      })
-
-      var urlParams = new URLSearchParams(window.location.search)
-
-      setInterval(() => {
-        $.get('/signalk/v1/api/vessels/self/navigation', (data) => {
-          latitude = data.position.value.latitude
-          longitude = data.position.value.longitude
-          let heading = data.headingTrue?.value
-          if (heading) {
-            heading = heading * 57.295779513 // Convert to degrees
-          } else {
-            heading = 0
-          }
-          let latlng = L.latLng(latitude, longitude)
-          boat.setLatLng(latlng)
-          boat.setRotationAngle(heading)
-          if (track) {
-            track.addLatLng(latlng)
-          }
-        })
-
-        $.get(
-          '/signalk/v1/api/vessels/self/navigation/anchor/distanceFromBow/value',
-          (radius) => {
-            radius = Math.round(radius * 10) / 10
-            $('#radiusValue').html(radius)
-          }
-        )
-        $.get(
-          '/signalk/v1/api/vessels/self/environment/depth/belowSurface/value',
-          (depth) => {
-            depth = Math.round(depth * 10) / 10
-            $('#depthValue').html(depth)
-          }
-        ).fail(() => {
-          $('#depthValue').html('~')
-        })
-
-        $.get('/signalk/v1/api/vessels', (vessels) => {
-          function toTitleCase(str) {
-            if (!str) {
-              return str
-            }
-            return str
-              .toLowerCase()
-              .split(' ')
-              .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-              .join(' ')
-          }
-          let detectedTargets = []
-          for (let key in vessels) {
-            let vessel = vessels[key]
-            if (vessel.mmsi == mmsi) {
-              continue
-            }
-            if (
-              !('navigation' in vessel) ||
-              !('position' in vessel.navigation)
-            ) {
-              continue
-            }
-            let position = vessel.navigation.position.value
-            let heading = vessel.navigation.courseOverGroundTrue?.value
-            if (heading) {
-              heading = heading * 57.295779513 // Convert to degrees
-            } else {
-              heading = vessel.navigation.headingTrue?.value
-              if (heading) {
-                heading = heading * 57.295779513 // Convert to degrees
-              } else {
-                heading = 0
-              }
-            }
-            let vesselName = toTitleCase(vessel.name)
-            let distance = calculateDistance(
-              position.latitude,
-              position.longitude,
-              latitude,
-              longitude
-            )
-            if (distance <= 2000) {
-              detectedTargets.push(vessel.mmsi)
-              distance = Math.round(distance)
-              let popup = `<center><h3>${vesselName}</h3></center>`
-              popup += `<table>`
-              popup += `<tr><td class='popupHeading'>Distance:</td><td>${distance} m</td></tr>`
-              popup += `<tr><td class='popupHeading'>MMSI:</td><td>${vessel.mmsi}</td></tr>`
-              popup += `<tr><td class='popupHeading'>Latitude:</td><td>${position.latitude}</td></tr>`
-              popup += `<tr><td class='popupHeading'>Longitude:</td><td>${position.longitude}</td></tr>`
-              popup += `</table>`
-
-              if (vessel.mmsi in target) {
-                target[vessel.mmsi].setLatLng([
-                  position.latitude,
-                  position.longitude
-                ])
-                target[vessel.mmsi]._popup.setContent(popup)
-              } else {
-                target[vessel.mmsi] = L.marker(
-                  [position.latitude, position.longitude],
-                  {
-                    icon: targetIcon,
-                    rotationOrigin: 'center center'
-                  }
-                )
-                target[vessel.mmsi].addTo(map).bindPopup(popup)
-              }
-
-              target[vessel.mmsi].setRotationAngle(heading)
-            }
-          }
-          for (let mmsi in target) {
-            if (!detectedTargets.includes(mmsi)) {
-              console.log(`${mmsi} moved out of range`)
-              map.removeLayer(target[mmsi])
-              delete target[mmsi]
-            }
-          }
-        })
-      }, 1500)
-
-      $.get('/signalk/v1/api/vessels/self', (data) => {
-        mmsi = data.mmsi
-        let vesselType = data.design?.aisShipType?.value?.name
-        data = data.navigation
-        latitude = data.position.value.latitude
-        longitude = data.position.value.longitude
-        let heading = data.headingTrue?.value
-        if (heading) {
-          heading = heading * 57.295779513 // Convert to degrees
-        } else {
-          heading = 0
-        }
-        let latlng = L.latLng(latitude, longitude)
-        zoom = 17
-        if (urlParams.has('zoom')) {
-          zoom = urlParams.get('zoom')
-        }
-        map.setView(latlng, zoom)
-        let boatIcon = L.icon({
-          iconUrl:
-            vesselType === 'Sailing'
-              ? 'images/sailboat.png'
-              : 'images/powerboat.png',
-          iconSize: [24, 48], // size of the icon
-          iconAnchor: [12, 24] // point of the icon which will correspond to marker's location
-        })
-        boat = L.marker(latlng, {
-          rotationAngle: heading,
-          icon: boatIcon
-        }).addTo(map)
-
-        if (data.anchor && data.anchor.position && data.anchor.position.value) {
-          let anchorPosition = data.anchor.position.value
-          let radius = data.anchor.maxRadius.value
-          dropAnchor(anchorPosition, radius)
-        } else {
-          $('#anchorUp').show()
-        }
-      })
-
-      satelliteLayer = L.tileLayer(
+      var satelliteLayer = L.tileLayer(
         'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
         {
           attribution:
             'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
           maxZoom: 19
         }
-      )
-      satelliteLayer.addTo(map)
+      ).addTo(map)
 
-      osmLayer = L.tileLayer(
+      var osmLayer = L.tileLayer(
         'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
         {
           attribution: 'Map data from OpenStreetMap (OSM)',
@@ -415,7 +124,7 @@
         }
       )
 
-      openSeaMapLayer = L.tileLayer(
+      var openSeaLayer = L.tileLayer(
         'http://tiles.openseamap.org/seamark/{z}/{x}/{y}.png',
         {
           attribution: 'Map data from OpenSeaMap',
@@ -423,228 +132,544 @@
         }
       )
 
-      var baseMaps = {
-        OpenStreetMap: osmLayer,
-        Satellite: satelliteLayer
-      }
-
-      var overlayMaps = {
-        OpenSeaMaps: openSeaMapLayer
-      }
-
-      var layerControl = L.control
-        .layers(baseMaps, overlayMaps, {
-          position: 'bottomright'
-        })
+      L.control
+        .layers(
+          {
+            OpenStreetMap: osmLayer,
+            Satellite: satelliteLayer
+          },
+          {
+            OpenSeaMaps: openSeaLayer
+          },
+          { position: 'bottomright' }
+        )
         .addTo(map)
-      // On smaller screens for phones, layer control will be displayed in the center
-      // This also supports a future app version of the plugin
-      if (/iOS|iPhone|iPod|Android/.test(navigator.userAgent)) {
-        var style = document.createElement('style')
-        style.innerHTML = `
-      .leaflet-control-layers-expanded {
-        position: fixed !important;
-        left: 50% !important;
-        top: 50% !important;
-        transform: translate(-50%, -50%) !important;
-        z-index: 1000; /* Ensure it is above other elements */
-      }
-    `
-        document.head.appendChild(style)
-      }
 
-      $('#raiseAnchor').click(() => {
-        let agree = confirm('Do you really want to disable your anchor alarm?')
-        if (agree) {
-          $.post('/plugins/anchoralarm/raiseAnchor', () => {
-            raiseAnchor()
-          })
-        }
+      var allBuddies = []
+      var selectedVessel = null
+      var selectedRange = { start: Date.now() - 6 * 3600000, end: Date.now() }
+      var playbackTimer = null
+      var playbackCursor = selectedRange.start
+      var activeTrackLayer = null
+      var cursorMarker = null
+      var predictionLayers = []
+      var timelineTrackLayers = {}
+      var timelineCursorMarkers = {}
+      var liveTrackLayers = {}
+      var selfMarker = null
+      var selfMmsi = null
+      var hasAutoCentered = false
+      var liveTargets = {}
+      var viewMode = 'live' // live | playback
+
+      var boatIcon = L.icon({
+        iconUrl: 'images/powerboat.png',
+        iconSize: [24, 48],
+        iconAnchor: [12, 24]
       })
 
-      $('#dropAnchor').click(() => {
-        $.post('/plugins/anchoralarm/dropAnchor', () => {
-          $.get('/signalk/v1/api/vessels/self/navigation', (data) => {
-            let position = data.position.value
-            $.get(
-              '/signalk/v1/api/vessels/self/environment/depth/belowSurface/value',
-              (depth) => {
-                let radius = Math.round(parseInt(depth) * 5)
-                $.post(
-                  '/plugins/anchoralarm/setRadius',
-                  { radius: radius },
-                  () => {
-                    dropAnchor(position, radius)
-                  }
-                )
-              }
-            ).fail(() => {
-              let radius = prompt(
-                "Couldn't determine depth, Enter Max Radius (m)",
-                50
-              )
-              if (radius) {
-                $.post(
-                  '/plugins/anchoralarm/setRadius',
-                  { radius: radius },
-                  () => {
-                    dropAnchor(position, radius)
-                  }
-                )
-              }
-            })
-          })
-        }).fail((response) => {
-          alert('Failed to set the anchor, page will refresh')
-          location.reload()
+      function setStatus(text) { $('#statusText').text(text) }
+
+      function aisDotColor(status) {
+        if (status === 'dragging') return '#c92a2a'
+        if (status === 'normal_anchored') return '#e67700'
+        return '#2b8a3e'
+      }
+
+      function safeId(input) {
+        return String(input || '')
+          .replace(/[^a-zA-Z0-9_]/g, '_')
+          .replace(/_+/g, '_')
+          .replace(/^_+|_+$/g, '')
+          .toLowerCase()
+      }
+
+      function vesselUrnFromTarget(vessel, key) {
+        var k = String(key || '')
+        if (k.indexOf('urn:') === 0) return k
+        if (vessel && vessel.mmsi) return 'urn:mrn:imo:mmsi:' + String(vessel.mmsi)
+        return k
+      }
+
+      function targetIconForStatus(status) {
+        return L.divIcon({
+          className: 'bw-ais-icon-wrap',
+          html: '<div class="bw-ais-dot" style="background:' + aisDotColor(status) + ';width:14px;height:14px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.25)"></div>',
+          iconSize: [18, 18],
+          iconAnchor: [9, 9]
         })
-      })
+      }
 
-      $('#setRadius').click(() => {
-        $.get(
-          '/signalk/v1/api/vessels/self/navigation/anchor/maxRadius/value',
-          (radius) => {
-            let newRadius = prompt('Enter Radius (m)', radius)
-            if (newRadius) {
-              $.post(
-                '/plugins/anchoralarm/setRadius',
-                { radius: newRadius },
-                () => {
-                  anchorRadius.setRadius(newRadius)
-                  $('#radius').html(newRadius)
-                }
+      function ensureLiveTargetMarker(id, lat, lon, name, status) {
+        var popup = '<b>' + String(name || id) + '</b><br>Status: ' + String(status || 'normal_anchored')
+        if (!liveTargets[id]) {
+          liveTargets[id] = L.marker([lat, lon], {
+            icon: targetIconForStatus(status),
+            rotationOrigin: 'center center'
+          })
+            .addTo(map)
+            .bindPopup(popup)
+        } else {
+          liveTargets[id].setLatLng([lat, lon])
+          liveTargets[id].setIcon(targetIconForStatus(status))
+          liveTargets[id].setPopupContent(popup)
+          if (!map.hasLayer(liveTargets[id])) liveTargets[id].addTo(map)
+        }
+      }
+
+      function toLocalInput(ts) {
+        var d = new Date(ts)
+        d.setMinutes(d.getMinutes() - d.getTimezoneOffset())
+        return d.toISOString().slice(0, 16)
+      }
+
+      function fromLocalInput(s) {
+        var t = new Date(s).getTime()
+        return Number.isFinite(t) ? t : null
+      }
+
+      function clearPredictionLayers() {
+        predictionLayers.forEach(function (layer) { map.removeLayer(layer) })
+        predictionLayers = []
+      }
+
+      function clearTimelineLayers() {
+        Object.keys(timelineTrackLayers).forEach(function (id) {
+          map.removeLayer(timelineTrackLayers[id])
+          delete timelineTrackLayers[id]
+        })
+        Object.keys(timelineCursorMarkers).forEach(function (id) {
+          map.removeLayer(timelineCursorMarkers[id])
+          delete timelineCursorMarkers[id]
+        })
+      }
+
+      function clearLiveTrackLayers() {
+        Object.keys(liveTrackLayers).forEach(function (id) {
+          map.removeLayer(liveTrackLayers[id])
+          delete liveTrackLayers[id]
+        })
+      }
+
+      function hideLiveLayers() {
+        if (selfMarker && map.hasLayer(selfMarker)) map.removeLayer(selfMarker)
+        Object.keys(liveTargets).forEach(function (id) {
+          if (map.hasLayer(liveTargets[id])) map.removeLayer(liveTargets[id])
+        })
+      }
+
+      function showLiveLayers() {
+        if (selfMarker && !map.hasLayer(selfMarker)) selfMarker.addTo(map)
+        Object.keys(liveTargets).forEach(function (id) {
+          if (!map.hasLayer(liveTargets[id])) liveTargets[id].addTo(map)
+        })
+      }
+
+      function setMode(mode) {
+        viewMode = mode === 'playback' ? 'playback' : 'live'
+        var badge = $('#modeBadge')
+        if (viewMode === 'playback') {
+          badge.removeClass('live').addClass('playback').text('PLAYBACK')
+          hideLiveLayers()
+          renderTimelineAllVessels()
+        } else {
+          badge.removeClass('playback').addClass('live').text('LIVE')
+          clearTimelineLayers()
+          showLiveLayers()
+          renderLiveTracks()
+        }
+        setStatus('Mode: ' + viewMode)
+      }
+
+      function renderLiveTracks() {
+        clearPredictionLayers()
+        clearTimelineLayers()
+        clearLiveTrackLayers()
+        var bounds = []
+        var drawn = 0
+        allBuddies.forEach(function (v) {
+          var points = (v.track || [])
+          var latLngs = points
+            .filter(function (p) {
+              return (
+                p &&
+                p.position &&
+                typeof p.position.latitude === 'number' &&
+                Number.isFinite(p.position.latitude) &&
+                typeof p.position.longitude === 'number' &&
+                Number.isFinite(p.position.longitude)
               )
-            }
-          }
-        )
-      })
-
-      $('#increaseRadius').click(() => {
-        $.get(
-          '/signalk/v1/api/vessels/self/navigation/anchor/maxRadius/value',
-          (radius) => {
-            radius = parseInt(radius)
-            if (isNaN(radius)) {
-              return
-            }
-            radius = radius + 5
-            $.post('/plugins/anchoralarm/setRadius', { radius: radius }, () => {
-              anchorRadius.setRadius(radius)
-              $('#radius').html(radius)
             })
-          }
-        )
-      })
-
-      $('#decreaseRadius').click(() => {
-        $.get(
-          '/signalk/v1/api/vessels/self/navigation/anchor/maxRadius/value',
-          (radius) => {
-            radius = parseInt(radius)
-            if (isNaN(radius)) {
-              return
-            }
-            radius = radius - 5
-            $.post('/plugins/anchoralarm/setRadius', { radius: radius }, () => {
-              anchorRadius.setRadius(radius)
-              $('#radius').html(radius)
+            .map(function (p) {
+              return [p.position.latitude, p.position.longitude]
             })
-          }
-        )
-      })
+          if (latLngs.length < 2) return
+          var isSelected = selectedVessel && selectedVessel.safeId === v.safeId
+          liveTrackLayers[v.safeId] = L.polyline(latLngs, {
+            color: isSelected ? '#0b7285' : '#3b82f6',
+            weight: isSelected ? 4 : 2.5,
+            opacity: isSelected ? 0.95 : 0.72
+          }).addTo(map)
+          drawn += 1
+          bounds = bounds.concat(latLngs)
 
-      function updateTrack() {
-        $.getJSON('/plugins/anchoralarm/getTrack', (data) => {
-          const latLngs = data.map((item) =>
-            L.latLng(item.position.latitude, item.position.longitude)
-          )
-          if (track) {
-            track.setLatLngs(latLngs)
-          } else {
-            track = L.polyline(latLngs, {
-              color: 'yellow',
-              opacity: 0.7,
+          // Show persisted buddy markers immediately from state/history, not only live AIS polling.
+          var lp = v.lastPosition
+          if (lp && typeof lp.latitude === 'number' && typeof lp.longitude === 'number') {
+            ensureLiveTargetMarker(
+              v.safeId,
+              lp.latitude,
+              lp.longitude,
+              v.name || v.safeId,
+              v.latestLabel || v.status || 'normal_anchored'
+            )
+          }
+        })
+        if (!hasAutoCentered && bounds.length > 1) {
+          map.fitBounds(bounds, { padding: [24, 24] })
+          hasAutoCentered = true
+        }
+        setStatus('Mode: live | buddies: ' + allBuddies.length + ' | tracks drawn: ' + drawn)
+      }
+
+      function renderTimelineAllVessels() {
+        clearTimelineLayers()
+        var bounds = []
+        allBuddies.forEach(function (v) {
+          var points = (v.track || []).filter(function (p) {
+            return p.time >= selectedRange.start && p.time <= selectedRange.end
+          })
+          var latLngs = points.map(function (p) {
+            return [p.position.latitude, p.position.longitude]
+          })
+          if (latLngs.length >= 2) {
+            var isSelected = selectedVessel && selectedVessel.safeId === v.safeId
+            timelineTrackLayers[v.safeId] = L.polyline(latLngs, {
+              color: isSelected ? '#0b7285' : '#8a8f98',
+              weight: isSelected ? 4 : 2,
+              opacity: isSelected ? 0.95 : 0.55
+            }).addTo(map)
+            bounds = bounds.concat(latLngs)
+          }
+          var cursorPoints = points.filter(function (p) { return p.time <= playbackCursor })
+          if (cursorPoints.length) {
+            var cp = cursorPoints[cursorPoints.length - 1].position
+            timelineCursorMarkers[v.safeId] = L.circleMarker([cp.latitude, cp.longitude], {
+              radius: selectedVessel && selectedVessel.safeId === v.safeId ? 6 : 4,
+              color: selectedVessel && selectedVessel.safeId === v.safeId ? '#0b7285' : '#555',
+              fillColor: selectedVessel && selectedVessel.safeId === v.safeId ? '#0b7285' : '#777',
+              fillOpacity: 0.9,
               weight: 1
             }).addTo(map)
+            timelineCursorMarkers[v.safeId].bindPopup(
+              '<b>' + (v.name || v.safeId) + '</b><br>' + new Date(playbackCursor).toLocaleString()
+            )
           }
+        })
+        if (bounds.length > 1) map.fitBounds(bounds, { padding: [24, 24] })
+        $('#cursorText').text(new Date(playbackCursor).toLocaleString())
+      }
+
+      function renderTrack() {
+        if (viewMode === 'playback') {
+          renderTimelineAllVessels()
+          return
+        }
+        renderLiveTracks()
+        return
+        clearPredictionLayers()
+        if (activeTrackLayer) {
+          map.removeLayer(activeTrackLayer)
+          activeTrackLayer = null
+        }
+        if (cursorMarker) {
+          map.removeLayer(cursorMarker)
+          cursorMarker = null
+        }
+        if (!selectedVessel) return
+        var points = (selectedVessel.track || []).filter(function (p) {
+          return p.time >= selectedRange.start && p.time <= selectedRange.end
+        })
+        var latLngs = points.map(function (p) { return [p.position.latitude, p.position.longitude] })
+        if (latLngs.length >= 2) {
+          activeTrackLayer = L.polyline(latLngs, { color: '#0b7285', weight: 3 }).addTo(map)
+          map.fitBounds(activeTrackLayer.getBounds(), { padding: [24, 24] })
+        }
+        updateCursorMarker()
+      }
+
+      function updateCursorMarker() {
+        if (viewMode === 'playback') {
+          renderTimelineAllVessels()
+          return
+        }
+        if (!selectedVessel) return
+        var points = (selectedVessel.track || []).filter(function (p) {
+          return p.time <= playbackCursor && p.time >= selectedRange.start && p.time <= selectedRange.end
+        })
+        if (!points.length) return
+        var p = points[points.length - 1].position
+        if (!cursorMarker) cursorMarker = L.marker([p.latitude, p.longitude]).addTo(map)
+        else cursorMarker.setLatLng([p.latitude, p.longitude])
+        $('#cursorText').text(new Date(playbackCursor).toLocaleString())
+      }
+
+      function refreshVesselsAndSettings() {
+        var historyUrl = '/plugins/anchor-drag-ml/history'
+        if (viewMode === 'live') {
+          var span = selectedRange.end - selectedRange.start
+          var now = Date.now()
+          selectedRange.end = now
+          selectedRange.start = now - Math.max(60 * 60 * 1000, span || 6 * 3600000)
+          $('#rangeStart').val(toLocalInput(selectedRange.start))
+          $('#rangeEnd').val(toLocalInput(selectedRange.end))
+        } else {
+          historyUrl += '?start=' + selectedRange.start + '&end=' + selectedRange.end
+        }
+        return $.getJSON('/plugins/anchor-drag-ml/settings').then(function (settings) {
+          $('#retentionText').text(settings.recordingRetentionHours || '-')
+          return $.getJSON(historyUrl)
+        }).then(function (data) {
+          allBuddies = data.buddies || []
+          var select = $('#vesselSelect')
+          select.empty()
+          allBuddies.forEach(function (b) {
+            select.append($('<option>').val(b.safeId).text((b.name || b.safeId) + ' (' + (b.track || []).length + ')'))
+          })
+          if (!allBuddies.length) {
+            selectedVessel = null
+            renderTrack()
+            return
+          }
+          var wanted = selectedVessel ? selectedVessel.safeId : allBuddies[0].safeId
+          var fallback = allBuddies.find(function (b) { return (b.track || []).length >= 2 }) || allBuddies[0]
+          selectedVessel = allBuddies.find(function (b) { return b.safeId === wanted }) || fallback
+          select.val(selectedVessel.safeId)
+          if (viewMode === 'playback') renderTimelineAllVessels()
+          else renderLiveTracks()
         })
       }
 
-      function dropAnchor(position, radius) {
-        $('#anchorDown').show()
-        $('#anchorUp').hide()
-        let anchorLatitude = position.latitude
-        let anchorLongitude = position.longitude
-        maxRadius = radius
-
-        $('#radius').html(maxRadius)
-        let anchorLatLng = L.latLng(anchorLatitude, anchorLongitude)
-        anchorRadius = L.circle(anchorLatLng, maxRadius).addTo(map)
-        anchor = L.marker(anchorLatLng, {
-          icon: anchorIcon,
-          draggable: true
-        }).addTo(map)
-        anchor.on('dragend', function (event) {
-          var marker = event.target
-          var position = marker.getLatLng()
-          var data = {
-            position: {
-              latitude: position.lat,
-              longitude: position.lng
-            }
+      function refreshSelfAndLiveTargets() {
+        if (viewMode !== 'live') return
+        $.get('/signalk/v1/api/vessels/self', function (self) {
+          var pos = self && self.navigation && self.navigation.position && self.navigation.position.value
+          if (!pos || typeof pos.latitude !== 'number' || typeof pos.longitude !== 'number') return
+          selfMmsi = self.mmsi
+          if (!selfMarker) {
+            selfMarker = L.marker([pos.latitude, pos.longitude], { icon: boatIcon }).addTo(map)
+          } else {
+            selfMarker.setLatLng([pos.latitude, pos.longitude])
           }
-          $.ajax({
-            url: '/plugins/anchoralarm/setAnchorPosition',
-            type: 'POST',
-            contentType: 'application/json',
-            data: JSON.stringify(data),
-            success: () => {
-              anchor.setLatLng(position)
-              anchorRadius.setLatLng(position)
-            },
-            error: (response) => {
-              alert('Failed to set anchor position, page will refresh')
-              location.reload()
+          if (!hasAutoCentered) {
+            map.setView([pos.latitude, pos.longitude], 14)
+            hasAutoCentered = true
+          }
+        })
+
+        $.get('/signalk/v1/api/vessels', function (vessels) {
+          var seen = {}
+          var statusBySafeId = {}
+          allBuddies.forEach(function (b) {
+            statusBySafeId[b.safeId] = b
+          })
+
+          Object.keys(vessels || {}).forEach(function (key) {
+            var vessel = vessels[key]
+            if (!vessel || !vessel.navigation || !vessel.navigation.position || !vessel.navigation.position.value) return
+            if (selfMmsi && vessel.mmsi == selfMmsi) return
+            var p = vessel.navigation.position.value
+            if (typeof p.latitude !== 'number' || typeof p.longitude !== 'number') return
+
+            var urn = vesselUrnFromTarget(vessel, key)
+            var sid = safeId(urn)
+            var b = statusBySafeId[sid]
+            var status = b ? (b.latestLabel || b.status || 'normal_anchored') : 'normal_anchored'
+            var name = vessel.name && vessel.name.value ? vessel.name.value : (vessel.name || vessel.mmsi || key)
+            seen[key] = true
+
+            ensureLiveTargetMarker(key, p.latitude, p.longitude, name, status)
+          })
+
+          Object.keys(liveTargets).forEach(function (key) {
+            if (!seen[key]) {
+              map.removeLayer(liveTargets[key])
+              delete liveTargets[key]
             }
           })
         })
-        updateTrack()
-        trackUpdater = setInterval(updateTrack, 30000)
       }
 
-      function raiseAnchor() {
-        map.removeLayer(anchor)
-        map.removeLayer(anchorRadius)
-        $('#anchorUp').show()
-        $('#anchorDown').hide()
-        if (track) {
-          map.removeLayer(track)
-          track = null
+      function refreshLabels() {
+        return $.getJSON('/plugins/anchor-drag-ml/labels', function (data) {
+          var el = $('#labelsList')
+          el.empty()
+          ;(data.labels || []).slice(0, 40).forEach(function (label) {
+            var line = $('<div>')
+            line.text(
+              label.label + ' | ' + label.safeId + ' | ' +
+              new Date(label.startTime).toLocaleString() + ' -> ' +
+              new Date(label.endTime).toLocaleString()
+            )
+            var del = $('<button style="margin-left:8px">Delete</button>')
+            del.on('click', function () {
+              $.ajax({ url: '/plugins/anchor-drag-ml/labels/' + label.id, type: 'DELETE' }).then(function () {
+                refreshLabels()
+                setStatus('Deleted label ' + label.id)
+              })
+            })
+            line.append(del)
+            el.append(line)
+          })
+        })
+      }
+
+      function refreshModelStatus() {
+        return $.getJSON('/plugins/anchor-drag-ml/model/status', function (data) {
+          if (!data.hasModel) {
+            $('#modelStatus').html('Model not trained. Labels: normal=' + data.classCounts.normal_anchored + ', dragging=' + data.classCounts.dragging_event)
+            return
+          }
+          var m = data.metrics || {}
+          $('#modelStatus').html(
+            'Trained: ' + new Date(data.trainedAt).toLocaleString() +
+            '<br>Samples: ' + (m.sampleCount || 0) +
+            '<br>Accuracy: ' + toPct(m.accuracy) +
+            ' Precision: ' + toPct(m.precision) +
+            ' Recall: ' + toPct(m.recall) +
+            ' F1: ' + toPct(m.f1)
+          )
+        })
+      }
+
+      function toPct(v) { return Number.isFinite(v) ? (v * 100).toFixed(1) + '%' : '-' }
+
+      function createLabel(label) {
+        if (!selectedVessel) {
+          setStatus('Select a vessel first.')
+          return
         }
-        if (trackUpdater) {
-          clearInterval(trackUpdater)
-          trackUpdater = null
-        }
+        $.ajax({
+          url: '/plugins/anchor-drag-ml/labels',
+          type: 'POST',
+          contentType: 'application/json',
+          data: JSON.stringify({
+            safeId: selectedVessel.safeId,
+            startTime: selectedRange.start,
+            endTime: selectedRange.end,
+            label: label
+          })
+        }).then(function () {
+          setStatus('Saved label: ' + label)
+          refreshLabels()
+        }).fail(function (xhr) {
+          setStatus('Failed to save label: ' + (xhr.responseJSON && xhr.responseJSON.error ? xhr.responseJSON.error : 'unknown'))
+        })
       }
 
-      function calculateDistance(lat1, lon1, lat2, lon2) {
-        var R = 6371000 // Radius of the earth in m
-        var dLat = deg2rad(lat2 - lat1) // deg2rad below
-        var dLon = deg2rad(lon2 - lon1)
-        var a =
-          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-          Math.cos(deg2rad(lat1)) *
-            Math.cos(deg2rad(lat2)) *
-            Math.sin(dLon / 2) *
-            Math.sin(dLon / 2)
-        var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-        var d = R * c // Distance in km
-        return d
+      function predictRange() {
+        if (!selectedVessel) return
+        clearPredictionLayers()
+        var windowMs = Math.max(60000, Number($('#windowMinutes').val()) * 60000 || 600000)
+        $.getJSON('/plugins/anchor-drag-ml/predictions?vessel=' + encodeURIComponent(selectedVessel.safeId) + '&start=' + selectedRange.start + '&end=' + selectedRange.end + '&windowMs=' + windowMs)
+          .then(function (data) {
+            ;(data.predictions || []).forEach(function (pred) {
+              var points = (selectedVessel.track || []).filter(function (p) { return p.time >= pred.startTime && p.time <= pred.endTime })
+              var latLngs = points.map(function (p) { return [p.position.latitude, p.position.longitude] })
+              if (latLngs.length < 2) return
+              var high = pred.probability >= 0.5
+              var layer = L.polyline(latLngs, {
+                color: high ? '#c92a2a' : '#2b8a3e',
+                weight: high ? 5 : 3,
+                opacity: 0.75
+              }).addTo(map)
+              predictionLayers.push(layer)
+            })
+            var highs = (data.predictions || []).filter(function (p) { return p.probability >= 0.5 }).length
+            setStatus('Predictions loaded. High-risk windows: ' + highs)
+          })
+          .fail(function (xhr) {
+            setStatus('Prediction failed: ' + (xhr.responseJSON && xhr.responseJSON.error ? xhr.responseJSON.error : 'unknown'))
+          })
       }
 
-      function deg2rad(deg) {
-        return deg * (Math.PI / 180)
+      function bindUi() {
+        $('#rangeStart').val(toLocalInput(selectedRange.start))
+        $('#rangeEnd').val(toLocalInput(selectedRange.end))
+        $('#timelineSlider').on('input', function () {
+          setMode('playback')
+          var ratio = Number($(this).val()) / 1000
+          playbackCursor = Math.round(selectedRange.start + ratio * (selectedRange.end - selectedRange.start))
+          updateCursorMarker()
+        })
+        $('#vesselSelect').on('change', function () {
+          var safeId = $(this).val()
+          selectedVessel = allBuddies.find(function (b) { return b.safeId === safeId }) || null
+          if (viewMode === 'playback') renderTimelineAllVessels()
+          else renderTrack()
+        })
+        $('#loadRangeBtn').on('click', function () {
+          var start = fromLocalInput($('#rangeStart').val())
+          var end = fromLocalInput($('#rangeEnd').val())
+          if (!start || !end || end <= start) return setStatus('Invalid range')
+          selectedRange = { start: start, end: end }
+          playbackCursor = start
+          setMode('playback')
+          refreshVesselsAndSettings().then(function () { refreshLabels() })
+          setStatus('Loaded range')
+        })
+        $('#playBtn').on('click', function () {
+          setMode('playback')
+          if (playbackTimer) return
+          playbackTimer = setInterval(function () {
+            playbackCursor += Math.max(1000, (selectedRange.end - selectedRange.start) / 300)
+            if (playbackCursor > selectedRange.end) playbackCursor = selectedRange.start
+            var ratio = (playbackCursor - selectedRange.start) / Math.max(1, selectedRange.end - selectedRange.start)
+            $('#timelineSlider').val(Math.round(ratio * 1000))
+            updateCursorMarker()
+          }, 150)
+        })
+        $('#pauseBtn').on('click', function () {
+          if (playbackTimer) {
+            clearInterval(playbackTimer)
+            playbackTimer = null
+          }
+        })
+        $('#liveModeBtn').on('click', function () {
+          if (playbackTimer) {
+            clearInterval(playbackTimer)
+            playbackTimer = null
+          }
+          setMode('live')
+          refreshSelfAndLiveTargets()
+        })
+        $('#markNormalBtn').on('click', function () { createLabel('normal_anchored') })
+        $('#markDraggingBtn').on('click', function () { createLabel('dragging_event') })
+        $('#retrainBtn').on('click', function () {
+          $.ajax({ url: '/plugins/anchor-drag-ml/model/retrain', type: 'POST' })
+            .then(function () {
+              setStatus('Model retrained')
+              refreshModelStatus()
+            })
+            .fail(function (xhr) {
+              setStatus('Retrain failed: ' + (xhr.responseJSON && xhr.responseJSON.error ? xhr.responseJSON.error : 'unknown'))
+            })
+        })
+        $('#refreshModelBtn').on('click', function () { refreshModelStatus() })
+        $('#predictBtn').on('click', function () { predictRange() })
       }
+
+      bindUi()
+      refreshVesselsAndSettings().then(function () {
+        refreshLabels()
+        refreshModelStatus()
+        refreshSelfAndLiveTargets()
+        if (viewMode === 'live') renderLiveTracks()
+      })
+      setInterval(function () {
+        refreshVesselsAndSettings()
+        refreshSelfAndLiveTargets()
+      }, 8000)
     </script>
   </body>
 </html>

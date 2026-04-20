@@ -1,12 +1,13 @@
 {
-  "name": "signalk-anchoralarm-plugin",
+  "name": "anchor-drag-ml",
   "version": "2.0.0",
-  "description": "Plugin that checks the vessel position to see if there's anchor drift",
+  "description": "Auto-track nearby AIS vessels (radius); records positions locally for anchor, move, drag alarms",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc",
     "build:watch": "tsc --watch",
+    "prepare": "npm run build",
     "prepublishOnly": "npm run build",
     "test": "$NODE dist/index.js",
     "prettier": "prettier --write .",
@@ -22,7 +23,7 @@
   "signalk-plugin-enabled-by-default": false,
   "signalk": {
     "appIcon": "images/anchoralarm.png",
-    "displayName": "Anchor Alarm"
+    "displayName": "Anchor Drag ML"
   },
   "author": {
     "name": "Scott Bender",
@@ -53,6 +54,6 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/sbender9/signalk-anchoralarm-plugin"
+    "url": "https://github.com/basawyer/anchor-drag-ml"
   }
 }
